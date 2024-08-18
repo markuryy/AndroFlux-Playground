@@ -1,0 +1,38 @@
+{
+  "title": "Documentation",
+  "sections": [
+    {
+      "title": "Getting Started",
+      "content": [
+        "Welcome to our documentation! This guide will help you get started with our product.",
+        "Before you begin, make sure you have all the necessary prerequisites installed on your system."
+      ]
+    },
+    {
+      "title": "Features",
+      "subsections": [
+        {
+          "title": "Core Features",
+          "content": [
+            "Our product offers a wide range of powerful features to enhance your workflow.",
+            "Explore the core functionalities that make our product stand out from the rest."
+          ]
+        },
+        {
+          "title": "Advanced Features",
+          "content": [
+            "Once you're comfortable with the basics, dive into our advanced features.",
+            "These tools will help you take your projects to the next level."
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Troubleshooting",
+      "content": [
+        "Encountering issues? Our troubleshooting guide is here to help.",
+        "Find solutions to common problems and learn how to optimize your experience."
+      ]
+    }
+  ]
+}
