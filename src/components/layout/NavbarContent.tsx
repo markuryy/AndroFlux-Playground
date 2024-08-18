@@ -5,32 +5,32 @@ import Link from "next/link";
 const SidebarButton = ({ icon: Icon, label, href, onClick }: { icon: React.ElementType; label: string; href?: string; onClick?: () => void }) => (
   <Tooltip label={label} position="right" withArrow>
     {href ? (
-      <UnstyledButton component={Link} href={href} p="xs">
+      <UnstyledButton component={Link} href={href}>
         <Icon size={24} />
       </UnstyledButton>
     ) : (
-      <UnstyledButton onClick={onClick} p="xs">
+      <UnstyledButton onClick={onClick}>
         <Icon size={24} />
       </UnstyledButton>
     )}
   </Tooltip>
 );
 
-export function NavbarContent() {
+export function NavbarContent({ openSettings }: { openSettings: () => void }) {
   const { colorScheme, toggleColorScheme } = useMantineColorScheme();
   const dark = colorScheme === 'dark';
 
   return (
-    <Stack justify="space-between" h="100%" p="md">
-      <Stack align="center" gap="xl">
+    <Stack justify="space-between" h="100%">
+      <Stack align="center">
         <Tooltip label="Home" position="right" withArrow>
           <UnstyledButton component={Link} href="/">
             <LuSparkles size={32} />
           </UnstyledButton>
         </Tooltip>
-        <Stack gap="lg">
+        <Stack>
           <SidebarButton icon={LuCroissant} label="App" href="/" />
-          <SidebarButton icon={LuSettings} label="Settings" href="/settings" />
+          <SidebarButton icon={LuSettings} label="Settings" onClick={openSettings} />
           <SidebarButton icon={LuHelpCircle} label="Docs" href="/docs" />
         </Stack>
       </Stack>
