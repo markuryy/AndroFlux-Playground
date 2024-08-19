@@ -3,9 +3,9 @@
 import { useState, useEffect } from 'react';
 import { Title, Stack, TextInput, NumberInput, Select, Button, Image, Box, SimpleGrid, ActionIcon, Group, Text } from "@mantine/core";
 import { useDisclosure } from '@mantine/hooks';
-import { LuPlus, LuMinus, LuSettings } from "react-icons/lu";
-import AspectRatioSelector from '@/components/AspectRatio';
-import { SettingsModal } from '@/components/SettingsModal';
+import { LuPlus, LuMinus, LuSettings, LuRefreshCw } from "react-icons/lu";
+import AspectRatioSelector from '../components/AspectRatio';
+import { SettingsModal } from '../components/SettingsModal';
 
 const PRESELECTED_LORAS = [
   { value: 'https://civitai.com/api/download/models/736458?type=Model&format=SafeTensor', label: 'AndroFlux v19' },
@@ -19,7 +19,7 @@ interface LoRA {
 
 export default function Home() {
   const [apiKey, setApiKey] = useState('');
-  const [seed, setSeed] = useState(Math.floor(Math.random() * 1000000));
+  const [seed, setSeed] = useState(() => Math.floor(Math.random() * 1000000));
   const [loras, setLoras] = useState<LoRA[]>([{ path: 'https://civitai.com/api/download/models/736458?type=Model&format=SafeTensor', scale: 1.0 }]);
   const [prompt, setPrompt] = useState('');
   const [dimensions, setDimensions] = useState({ width: 1024, height: 1024 });
@@ -33,7 +33,15 @@ export default function Home() {
     if (storedApiKey) {
       setApiKey(storedApiKey);
     }
+    const storedImages = localStorage.getItem('generatedImages');
+    if (storedImages) {
+      setGeneratedImages(JSON.parse(storedImages));
+    }
   }, []);
+
+  useEffect(() => {
+    localStorage.setItem('generatedImages', JSON.stringify(generatedImages));
+  }, [generatedImages]);
 
   const generateImage = async () => {
     if (!apiKey) {
@@ -92,18 +100,33 @@ export default function Home() {
     setLoras(newLoras);
   };
 
+  const randomizeSeed = () => {
+    setSeed(Math.floor(Math.random() * 1000000));
+  };
+
+  const clearImages = () => {
+    setGeneratedImages([]);
+    localStorage.removeItem('generatedImages');
+  };
+
   return (
-    <Stack>
-      <Title order={1} >AndroFlux Playground</Title>
+    <Stack gap="md">
+      <Title order={1}>AndroFlux Playground</Title>
       <SimpleGrid cols={{ base: 1, sm: 2 }}>
-        <Stack>
-          <NumberInput
-            label="Seed"
-            value={seed}
-            onChange={(value) => setSeed(Number(value))}
-            min={0}
-            max={999999}
-          />
+        <Stack gap="md">
+          <Group align="flex-end">
+            <NumberInput
+              label="Seed"
+              value={seed}
+              onChange={(value) => setSeed(Number(value))}
+              min={0}
+              max={999999}
+              style={{ flexGrow: 1 }}
+            />
+            <ActionIcon onClick={randomizeSeed} size="lg">
+              <LuRefreshCw />
+            </ActionIcon>
+          </Group>
           <TextInput
             label="Prompt"
             value={prompt}
@@ -111,45 +134,44 @@ export default function Home() {
           />
           <AspectRatioSelector dimensions={dimensions} setDimensions={setDimensions} />
           {loras.map((lora, index) => (
-            <Box key={index}>
-              <Group grow>
-                <Select
-                  label={`LoRA ${index + 1}`}
-                  data={[...PRESELECTED_LORAS, { value: 'custom', label: 'Custom URL' }]}
-                  value={PRESELECTED_LORAS.some(l => l.value === lora.path) ? lora.path : 'custom'}
-                  onChange={(value) => updateLora(index, 'path', value === 'custom' ? '' : value || '')}
+            <Group key={index} align="flex-end">
+              <Select
+                label={`LoRA ${index + 1}`}
+                data={[...PRESELECTED_LORAS, { value: 'custom', label: 'Custom URL' }]}
+                value={PRESELECTED_LORAS.some(l => l.value === lora.path) ? lora.path : 'custom'}
+                onChange={(value) => updateLora(index, 'path', value === 'custom' ? '' : value || '')}
+                style={{ flexGrow: 1 }}
+              />
+              {(!PRESELECTED_LORAS.some(l => l.value === lora.path)) && (
+                <TextInput
+                  label="Custom LoRA URL"
+                  value={lora.path}
+                  onChange={(event) => updateLora(index, 'path', event.currentTarget.value)}
+                  style={{ flexGrow: 1 }}
                 />
-                {(!PRESELECTED_LORAS.some(l => l.value === lora.path)) && (
-                  <TextInput
-                    label="Custom LoRA URL"
-                    value={lora.path}
-                    onChange={(event) => updateLora(index, 'path', event.currentTarget.value)}
-                  />
-                )}
-                <NumberInput
-                  label="Weight"
-                  value={lora.scale}
-                  onChange={(value) => updateLora(index, 'scale', Number(value))}
-                  min={0}
-                  max={2}
-                  step={0.1}
-                />
-              </Group>
-              <ActionIcon onClick={() => removeLora(index)} disabled={loras.length === 1}>
+              )}
+              <NumberInput
+                label="Weight"
+                value={lora.scale}
+                onChange={(value) => updateLora(index, 'scale', Number(value))}
+                min={0}
+                max={2}
+                step={0.1}
+                style={{ width: '80px' }}
+              />
+              <ActionIcon onClick={() => removeLora(index)} disabled={loras.length === 1} size="lg">
                 <LuMinus />
               </ActionIcon>
-            </Box>
+            </Group>
           ))}
-          <Button onClick={addLora}>
-            <LuPlus />
-            Add LoRA
-          </Button>
-          <Button onClick={generateImage} loading={isLoading}>
-            Generate Image
-          </Button>
-          {error && <Text>{error}</Text>}
+          <Group>
+            <Button onClick={addLora}><LuPlus /> Add LoRA</Button>
+            <Button onClick={generateImage} loading={isLoading}>Generate Image</Button>
+          </Group>
+          {error && <Text c="red">{error}</Text>}
         </Stack>
-        <Stack>
+        <Stack gap="md">
+          <Button onClick={clearImages}>Clear Images</Button>
           {generatedImages.map((image, index) => (
             <Image key={index} src={image} alt={`Generated image ${index + 1}`} />
           ))}

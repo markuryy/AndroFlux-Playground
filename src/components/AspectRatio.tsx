@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Slider, SegmentedControl, Text, Box, Stack, MantineTheme, SliderProps, CSSProperties } from '@mantine/core';
 
 interface Resolution {
@@ -28,9 +28,15 @@ interface AspectRatioSelectorProps {
 }
 
 const AspectRatioSelector: React.FC<AspectRatioSelectorProps> = ({ dimensions, setDimensions }) => {
-  const [selectedIndex, setSelectedIndex] = useState<number>(() => {
-    return resolutions.findIndex(res => res.width === dimensions.width && res.height === dimensions.height) || CENTER_INDEX;
-  });
+  const [selectedIndex, setSelectedIndex] = useState<number>(CENTER_INDEX);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    const index = resolutions.findIndex(res => res.width === dimensions.width && res.height === dimensions.height);
+    setSelectedIndex(index !== -1 ? index : CENTER_INDEX);
+  }, [dimensions]);
+
   const selectedResolution = resolutions[selectedIndex];
 
   const handleSliderChange = (value: number) => {
@@ -64,7 +70,7 @@ const AspectRatioSelector: React.FC<AspectRatioSelectorProps> = ({ dimensions, s
         },
       },
       bar: {
-        position: 'absolute' as const, // Explicitly set the type of position
+        position: 'absolute' as const,
         backgroundColor: theme.colors.blue[6],
         height: '100%',
         width: `${fillPercentage}%`,
@@ -78,24 +84,41 @@ const AspectRatioSelector: React.FC<AspectRatioSelectorProps> = ({ dimensions, s
     };
   };
 
+  if (!mounted) {
+    return null;
+  }
+
   return (
-    <Box style={{ width: 'auto', padding: '20px' }}>
-      <Stack gap="md">
+    <Box style={{ width: '100%', padding: '20px' }}>
+      <Box style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        '@media (min-width: 769px)': {
+          flexDirection: 'row',
+          justifyContent: 'space-between',
+          alignItems: 'flex-start',
+        },
+      }}>
         <Box
           style={{
-            width: '100%',
-            height: '150px',
+            width: '200px',
+            height: '200px',
             display: 'flex',
             justifyContent: 'center',
             alignItems: 'center',
             backgroundColor: '#f0f0f0',
             borderRadius: '8px',
+            marginBottom: '20px',
+            '@media (min-width: 769px)': {
+              marginBottom: 0,
+            },
           }}
         >
           <Box
             style={{
-              width: `${(selectedResolution.width / Math.max(selectedResolution.width, selectedResolution.height)) * 130}px`,
-              height: `${(selectedResolution.height / Math.max(selectedResolution.width, selectedResolution.height)) * 130}px`,
+              width: `${(selectedResolution.width / Math.max(selectedResolution.width, selectedResolution.height)) * 180}px`,
+              height: `${(selectedResolution.height / Math.max(selectedResolution.width, selectedResolution.height)) * 180}px`,
               backgroundColor: 'white',
               display: 'flex',
               justifyContent: 'center',
@@ -109,26 +132,49 @@ const AspectRatioSelector: React.FC<AspectRatioSelectorProps> = ({ dimensions, s
             </Text>
           </Box>
         </Box>
-        <SegmentedControl
-          value={selectedResolution.orientation}
-          onChange={handleOrientationChange}
-          data={[
-            { label: 'Portrait', value: 'portrait' },
-            { label: 'Square', value: 'square' },
-            { label: 'Landscape', value: 'landscape' },
-          ]}
-          fullWidth
-        />
-        <Slider
-          value={selectedIndex}
-          onChange={handleSliderChange}
-          min={0}
-          max={resolutions.length - 1}
-          step={1}
-          label={null}
-          styles={getSliderStyles}
-        />
-      </Stack>
+        <Stack style={{
+          width: '100%',
+          '@media (min-width: 769px)': {
+            width: 'calc(100% - 220px)',
+          },
+        }}>
+          <SegmentedControl
+            value={selectedResolution.orientation}
+            onChange={handleOrientationChange}
+            data={[
+              { label: 'Portrait', value: 'portrait' },
+              { label: 'Square', value: 'square' },
+              { label: 'Landscape', value: 'landscape' },
+            ]}
+            fullWidth
+            styles={(theme) => ({
+              root: {
+                '@media (max-width: 768px)': {
+                  flexDirection: 'column',
+                  '& label': {
+                    width: '100%',
+                    '&:not(:last-of-type)': {
+                      borderRight: 'none',
+                      borderBottom: `1px solid ${
+                        theme.colors.dark[4]
+                      }`,
+                    },
+                  },
+                },
+              },
+            })}
+          />
+          <Slider
+            value={selectedIndex}
+            onChange={handleSliderChange}
+            min={0}
+            max={resolutions.length - 1}
+            step={1}
+            label={null}
+            styles={getSliderStyles}
+          />
+        </Stack>
+      </Box>
     </Box>
   );
 };
