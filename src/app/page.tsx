@@ -69,26 +69,26 @@ export default function Home() {
       settingsHandlers.open();
       return;
     }
-
+  
     if (!prompt.trim()) {
       setError('Please enter a prompt before generating an image.');
       return;
     }
-
+  
     if (currentImage) {
       setGalleryImages(prevImages => [currentImage, ...prevImages]);
       saveImagesToLocalStorage([currentImage, ...galleryImages]);
     }
-
+  
     setIsLoading(true);
     setProgress(0);
     setError(null);
     setCurrentImage(null);
-
+  
     const interval = setInterval(() => {
       setProgress((p) => (p < 100 ? p + 1.67 : p));
     }, 1000);
-
+  
     try {
       const response = await fetch('/api/generate', {
         method: 'POST',
@@ -103,17 +103,27 @@ export default function Home() {
           apiKey: falApiKey,
         }),
       });
-
+  
       if (!response.ok) {
         throw new Error('Failed to generate image');
       }
-
-      const result = await response.json();
-      setCurrentImage(result.images[0].url);
-      setSeed(result.seed);
+  
+      const blob = await response.blob(); // Fetch as a Blob, not as JSON
+      const imageUrl = URL.createObjectURL(blob);
+  
+      setCurrentImage(imageUrl);
+      setGalleryImages(prevImages => [imageUrl, ...prevImages]);
+      saveImagesToLocalStorage([imageUrl, ...galleryImages]);
+  
+      setSeed(seed);
     } catch (error) {
-      console.error('Error generating image:', error);
-      setError('Failed to generate image. Please try again.');
+      if (error instanceof Error) {
+        console.error('Error generating image:', error.message);
+        setError(error.message);
+      } else {
+        console.error('Unexpected error', error);
+        setError('An unexpected error occurred.');
+      }
     } finally {
       clearInterval(interval);
       setProgress(100);
@@ -123,6 +133,7 @@ export default function Home() {
       }, 500); // Small delay to ensure progress bar fills
     }
   };
+  
 
   const addLora = () => {
     setLoras([...loras, { path: '', scale: 1.0 }]);
@@ -260,12 +271,10 @@ export default function Home() {
               padding: '10px',
               border: '1px solid #eaeaea',
               borderRadius: '10px',
-              maxHeight: 'calc(100vh - 150px)',
               display: 'flex',
               flexDirection: 'column',
               justifyContent: 'center',
               alignItems: 'center',
-              overflow: 'hidden',
             }}
           >
             {isLoading ? (
