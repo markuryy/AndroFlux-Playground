@@ -5,12 +5,12 @@ import {
   Title, Stack, TextInput, NumberInput, Select, Button, Image,
   ActionIcon, Group, Text, Skeleton, Progress, Box, SimpleGrid,
   Modal,
-  Textarea
 } from "@mantine/core";
 import { useDisclosure } from '@mantine/hooks';
 import { LuPlus, LuMinus, LuSettings, LuRefreshCw, LuTrash2, LuDownload } from "react-icons/lu";
 import AspectRatioSelector from '../components/AspectRatio';
 import { SettingsModal } from '../components/SettingsModal';
+import { EnhancedTextarea } from '../components/EnhancedTextarea';
 import JSZip from 'jszip';
 
 const PRESELECTED_LORAS = [
@@ -24,7 +24,6 @@ interface LoRA {
 }
 
 export default function Home() {
-  const [apiKey, setApiKey] = useState('');
   const [seed, setSeed] = useState(() => Math.floor(Math.random() * 1000000));
   const [loras, setLoras] = useState<LoRA[]>([{ path: 'https://civitai.com/api/download/models/736458?type=Model&format=SafeTensor', scale: 1.0 }]);
   const [prompt, setPrompt] = useState('');
@@ -39,10 +38,6 @@ export default function Home() {
   const [storageUsage, setStorageUsage] = useState(0);
 
   useEffect(() => {
-    const storedApiKey = localStorage.getItem('falApiKey');
-    if (storedApiKey) {
-      setApiKey(storedApiKey);
-    }
     loadImagesFromLocalStorage();
     checkLocalStorageUsage();
   }, []);
@@ -69,7 +64,8 @@ export default function Home() {
   };
 
   const generateImage = async () => {
-    if (!apiKey) {
+    const falApiKey = localStorage.getItem('falApiKey');
+    if (!falApiKey) {
       settingsHandlers.open();
       return;
     }
@@ -104,7 +100,7 @@ export default function Home() {
           loras,
           prompt,
           dimensions,
-          apiKey,
+          apiKey: falApiKey,
         }),
       });
 
@@ -207,13 +203,11 @@ export default function Home() {
               <LuRefreshCw />
             </ActionIcon>
           </Group>
-          <Textarea
+          <EnhancedTextarea
             label="Prompt"
             value={prompt}
+            onChange={setPrompt}
             rows={4}
-            resize='vertical'
-            onChange={(event) => setPrompt(event.currentTarget.value)}
-            style={{ flexGrow: 1 }}
             error={error}
           />
           <AspectRatioSelector dimensions={dimensions} setDimensions={setDimensions} />
@@ -345,7 +339,7 @@ export default function Home() {
                 </Box>
               ))}
             </SimpleGrid>
-            <Button onClick={clearImages} color="red" fullWidth mt="md">
+            <Button onClick={clearStorageHandlers.open} color="red" fullWidth mt="md">
               Clear All Images
             </Button>
           </Box>
@@ -365,8 +359,6 @@ export default function Home() {
       <SettingsModal
         opened={settingsOpened}
         onClose={settingsHandlers.close}
-        apiKey={apiKey}
-        setApiKey={setApiKey}
       />
       <Modal
         opened={clearStorageOpened}

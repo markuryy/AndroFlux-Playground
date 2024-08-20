@@ -4,7 +4,7 @@ import { AppShell, ColorSchemeScript, MantineProvider, createTheme, Burger } fro
 import { NavbarContent } from "./NavbarContent";
 import { FooterContent } from "./FooterContent";
 import { useColorScheme } from '@mantine/hooks';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { SettingsModal } from "../SettingsModal";
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
@@ -14,7 +14,6 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   });
 
   const [settingsOpened, setSettingsOpened] = useState(false);
-  const [apiKey, setApiKey] = useState('');
   const [navbarOpened, setNavbarOpened] = useState(false);
 
   const openSettings = () => setSettingsOpened(true);
@@ -62,8 +61,6 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         <SettingsModal
           opened={settingsOpened}
           onClose={closeSettings}
-          apiKey={apiKey}
-          setApiKey={setApiKey}
         />
       </MantineProvider>
     </>

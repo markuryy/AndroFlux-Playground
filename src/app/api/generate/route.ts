@@ -23,7 +23,10 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    return NextResponse.json(result);
+    // Ensure the result is properly formatted JSON
+    const formattedResult = JSON.parse(JSON.stringify(result, null, 2));
+
+    return NextResponse.json(formattedResult);
   } catch (error) {
     console.error('Error generating image:', error);
     return NextResponse.json({ error: 'Failed to generate image' }, { status: 500 });
