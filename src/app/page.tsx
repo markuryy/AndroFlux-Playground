@@ -74,6 +74,11 @@ export default function Home() {
       return;
     }
 
+    if (!prompt.trim()) {
+      setError('Please enter a prompt before generating an image.');
+      return;
+    }
+
     if (currentImage) {
       setGalleryImages(prevImages => [currentImage, ...prevImages]);
       saveImagesToLocalStorage([currentImage, ...galleryImages]);
@@ -209,6 +214,7 @@ export default function Home() {
             resize='vertical'
             onChange={(event) => setPrompt(event.currentTarget.value)}
             style={{ flexGrow: 1 }}
+            error={error}
           />
           <AspectRatioSelector dimensions={dimensions} setDimensions={setDimensions} />
           {loras.map((lora, index) => (
@@ -250,7 +256,6 @@ export default function Home() {
               Generate Image
             </Button>
           </Group>
-          {error && <Text color="red">{error}</Text>}
         </Stack>
   
         {/* Right Section */}
@@ -285,7 +290,7 @@ export default function Home() {
                   backgroundColor: '#f4f4f4',
                 }}
               >
-                <Text color="dimmed">No image generated yet</Text>
+                <Text color="dimmed">Nothing here (yet)</Text>
               </Box>
             ) : (
               <Box style={{ position: 'relative', width: '100%' }}>
@@ -293,7 +298,7 @@ export default function Home() {
                   src={currentImage}
                   alt="Generated image"
                   radius="md"
-                  style={{ objectFit: 'contain', width: '100%', height: 'auto' }}
+                  style={{ objectFit: 'contain', width: '100%' }}
                 />
                 <ActionIcon
                   variant="filled"
@@ -317,7 +322,8 @@ export default function Home() {
               padding: '10px',
               border: '1px solid #eaeaea',
               borderRadius: '10px',
-              overflow: 'hidden',
+              overflow: 'auto',
+              maxHeight: 'calc(100vh - 400px)',
             }}
           >
             <SimpleGrid cols={3}>
@@ -339,23 +345,11 @@ export default function Home() {
                 </Box>
               ))}
             </SimpleGrid>
+            <Button onClick={clearImages} color="red" fullWidth mt="md">
+              Clear All Images
+            </Button>
           </Box>
         </Stack>
-      </Group>
-      <Group
-        style={{
-          position: 'fixed',
-          bottom: 20,
-          left: 20,
-          gap: '10px',
-        }}
-      >
-        <ActionIcon onClick={clearStorageHandlers.open} size="lg">
-          <LuTrash2 />
-        </ActionIcon>
-        <Button onClick={clearImages} color="red">
-          Clear All Images
-        </Button>
       </Group>
       <ActionIcon
         onClick={settingsHandlers.open}
