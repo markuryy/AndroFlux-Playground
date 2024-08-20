@@ -3,12 +3,15 @@
 import { useState, useEffect } from 'react';
 import {
   Title, Stack, TextInput, NumberInput, Select, Button, Image,
-  ActionIcon, Group, Text, Skeleton, Progress, Box, SimpleGrid
+  ActionIcon, Group, Text, Skeleton, Progress, Box, SimpleGrid,
+  Modal,
+  Textarea
 } from "@mantine/core";
 import { useDisclosure } from '@mantine/hooks';
 import { LuPlus, LuMinus, LuSettings, LuRefreshCw, LuTrash2, LuDownload } from "react-icons/lu";
 import AspectRatioSelector from '../components/AspectRatio';
 import { SettingsModal } from '../components/SettingsModal';
+import JSZip from 'jszip';
 
 const PRESELECTED_LORAS = [
   { value: 'https://civitai.com/api/download/models/736458?type=Model&format=SafeTensor', label: 'AndroFlux v19' },
@@ -26,26 +29,44 @@ export default function Home() {
   const [loras, setLoras] = useState<LoRA[]>([{ path: 'https://civitai.com/api/download/models/736458?type=Model&format=SafeTensor', scale: 1.0 }]);
   const [prompt, setPrompt] = useState('');
   const [dimensions, setDimensions] = useState({ width: 1024, height: 1024 });
-  const [generatedImages, setGeneratedImages] = useState<string[]>([]);
+  const [currentImage, setCurrentImage] = useState<string | null>(null);
+  const [galleryImages, setGalleryImages] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [settingsOpened, settingsHandlers] = useDisclosure(false);
+  const [clearStorageOpened, clearStorageHandlers] = useDisclosure(false);
+  const [storageUsage, setStorageUsage] = useState(0);
 
   useEffect(() => {
     const storedApiKey = localStorage.getItem('falApiKey');
     if (storedApiKey) {
       setApiKey(storedApiKey);
     }
-    const storedImages = localStorage.getItem('generatedImages');
-    if (storedImages) {
-      setGeneratedImages(JSON.parse(storedImages));
-    }
+    loadImagesFromLocalStorage();
+    checkLocalStorageUsage();
   }, []);
 
-  useEffect(() => {
-    localStorage.setItem('generatedImages', JSON.stringify(generatedImages));
-  }, [generatedImages]);
+  const loadImagesFromLocalStorage = () => {
+    const storedImages = localStorage.getItem('generatedImages');
+    if (storedImages) {
+      setGalleryImages(JSON.parse(storedImages));
+    }
+  };
+
+  const saveImagesToLocalStorage = (images: string[]) => {
+    localStorage.setItem('generatedImages', JSON.stringify(images));
+  };
+
+  const checkLocalStorageUsage = () => {
+    let total = 0;
+    for (let key in localStorage) {
+      if (localStorage.hasOwnProperty(key)) {
+        total += (localStorage[key].length * 2) / 1024 / 1024;
+      }
+    }
+    setStorageUsage(total);
+  };
 
   const generateImage = async () => {
     if (!apiKey) {
@@ -53,9 +74,15 @@ export default function Home() {
       return;
     }
 
+    if (currentImage) {
+      setGalleryImages(prevImages => [currentImage, ...prevImages]);
+      saveImagesToLocalStorage([currentImage, ...galleryImages]);
+    }
+
     setIsLoading(true);
     setProgress(0);
     setError(null);
+    setCurrentImage(null);
 
     const interval = setInterval(() => {
       setProgress((p) => (p < 100 ? p + 1.67 : p));
@@ -81,7 +108,7 @@ export default function Home() {
       }
 
       const result = await response.json();
-      setGeneratedImages(prevImages => [result.images[0].url, ...prevImages]);
+      setCurrentImage(result.images[0].url);
       setSeed(result.seed);
     } catch (error) {
       console.error('Error generating image:', error);
@@ -119,8 +146,41 @@ export default function Home() {
   };
 
   const clearImages = () => {
-    setGeneratedImages([]);
+    setCurrentImage(null);
+    setGalleryImages([]);
     localStorage.removeItem('generatedImages');
+    checkLocalStorageUsage();
+  };
+
+  const downloadAllImages = () => {
+    const allImages = currentImage ? [currentImage, ...galleryImages] : galleryImages;
+    const zip = new JSZip();
+    allImages.forEach((image, index) => {
+      zip.file(`image-${index + 1}.png`, fetch(image).then(response => response.blob()));
+    });
+    zip.generateAsync({ type: 'blob' }).then((content: Blob) => {
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(content);
+      link.download = 'generated-images.zip';
+      link.click();
+    });
+  };
+
+  const downloadImage = async (imageUrl: string, index: number) => {
+    try {
+      const response = await fetch(imageUrl);
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `image-${index + 1}.png`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error downloading image:', error);
+    }
   };
 
   return (
@@ -142,9 +202,11 @@ export default function Home() {
               <LuRefreshCw />
             </ActionIcon>
           </Group>
-          <TextInput
+          <Textarea
             label="Prompt"
             value={prompt}
+            rows={4}
+            resize='vertical'
             onChange={(event) => setPrompt(event.currentTarget.value)}
             style={{ flexGrow: 1 }}
           />
@@ -193,6 +255,7 @@ export default function Home() {
   
         {/* Right Section */}
         <Stack style={{ flex: 1, overflowY: 'auto', height: '100vh' }}>
+          {/* Main Generation Box */}
           <Box
             style={{
               padding: '10px',
@@ -200,6 +263,7 @@ export default function Home() {
               borderRadius: '10px',
               maxHeight: 'calc(100vh - 150px)',
               display: 'flex',
+              flexDirection: 'column',
               justifyContent: 'center',
               alignItems: 'center',
               overflow: 'hidden',
@@ -207,10 +271,10 @@ export default function Home() {
           >
             {isLoading ? (
               <>
-                <Skeleton height={dimensions.height / 4} />
-                <Progress value={progress} color="blue" />
+                <Skeleton height={dimensions.height / 4} width="100%" mb={10} />
+                <Progress value={progress} color="blue" size="xl" radius="xl" style={{ width: '100%' }} />
               </>
-            ) : generatedImages.length === 0 ? (
+            ) : !currentImage ? (
               <Box
                 style={{
                   padding: '20px',
@@ -224,52 +288,75 @@ export default function Home() {
                 <Text color="dimmed">No image generated yet</Text>
               </Box>
             ) : (
-              <Image
-                src={generatedImages[0]}
-                alt="Generated image"
-                radius="md"
-                style={{ objectFit: 'contain', width: '100%', height: 'auto' }}
-              />
-            )}
-          </Box>
-  
-          <SimpleGrid cols={3}>
-            {generatedImages.slice(1).map((image, index) => (
-              <Box key={index} style={{ position: 'relative' }}>
-                <Image src={image} alt={`Generated image ${index + 1}`} radius="md" style={{ objectFit: 'contain', width: '100%' }} />
+              <Box style={{ position: 'relative', width: '100%' }}>
+                <Image
+                  src={currentImage}
+                  alt="Generated image"
+                  radius="md"
+                  style={{ objectFit: 'contain', width: '100%', height: 'auto' }}
+                />
                 <ActionIcon
                   variant="filled"
                   color="blue"
                   style={{
                     position: 'absolute',
-                    top: 5,
-                    right: 5,
+                    top: 10,
+                    right: 10,
                   }}
-                  onClick={() => {
-                    const a = document.createElement('a');
-                    a.href = image;
-                    a.download = `image-${index + 1}.png`;
-                    a.click();
-                  }}
+                  onClick={() => downloadImage(currentImage, 0)}
                 >
                   <LuDownload />
                 </ActionIcon>
               </Box>
-            ))}
-          </SimpleGrid>
+            )}
+          </Box>
+
+          {/* Gallery */}
+          <Box
+            style={{
+              padding: '10px',
+              border: '1px solid #eaeaea',
+              borderRadius: '10px',
+              overflow: 'hidden',
+            }}
+          >
+            <SimpleGrid cols={3}>
+              {galleryImages.map((image, index) => (
+                <Box key={index} style={{ position: 'relative' }}>
+                  <Image src={image} alt={`Generated image ${index + 1}`} radius="md" style={{ objectFit: 'contain', width: '100%' }} />
+                  <ActionIcon
+                    variant="filled"
+                    color="blue"
+                    style={{
+                      position: 'absolute',
+                      top: 5,
+                      right: 5,
+                    }}
+                    onClick={() => downloadImage(image, index + 1)}
+                  >
+                    <LuDownload />
+                  </ActionIcon>
+                </Box>
+              ))}
+            </SimpleGrid>
+          </Box>
         </Stack>
       </Group>
-      <ActionIcon
-        onClick={clearImages}
-        size="lg"
+      <Group
         style={{
           position: 'fixed',
           bottom: 20,
           left: 20,
+          gap: '10px',
         }}
       >
-        <LuTrash2 />
-      </ActionIcon>
+        <ActionIcon onClick={clearStorageHandlers.open} size="lg">
+          <LuTrash2 />
+        </ActionIcon>
+        <Button onClick={clearImages} color="red">
+          Clear All Images
+        </Button>
+      </Group>
       <ActionIcon
         onClick={settingsHandlers.open}
         size="lg"
@@ -287,9 +374,22 @@ export default function Home() {
         apiKey={apiKey}
         setApiKey={setApiKey}
       />
+      <Modal
+        opened={clearStorageOpened}
+        onClose={clearStorageHandlers.close}
+        title="Clear Local Storage"
+      >
+        <Text>Current local storage usage: {storageUsage.toFixed(2)} MB</Text>
+        <Text>Are you sure you want to clear all generated images from local storage?</Text>
+        <Group mt="md">
+          <Button onClick={() => {
+            clearImages();
+            clearStorageHandlers.close();
+          }}>Clear Storage</Button>
+          <Button onClick={downloadAllImages}>Download All Images</Button>
+          <Button onClick={clearStorageHandlers.close} variant="outline">Cancel</Button>
+        </Group>
+      </Modal>
     </Box>
   );
-  
-  
-  
 }
