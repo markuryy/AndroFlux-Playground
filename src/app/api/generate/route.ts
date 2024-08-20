@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import * as fal from "@fal-ai/serverless-client";
 
+export const maxDuration = 60;
+
 export async function POST(request: NextRequest) {
   const { seed, loras, prompt, dimensions, apiKey } = await request.json();
 

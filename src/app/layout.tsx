@@ -7,7 +7,7 @@ import { AppLayout } from '../components/layout/AppLayout';
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "New Project",
+  title: "AndroFlux Playground",
   description: "A Markury Project",
 };
 

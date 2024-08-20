@@ -1,9 +1,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Title, Stack, TextInput, NumberInput, Select, Button, Image, Box, SimpleGrid, ActionIcon, Group, Text } from "@mantine/core";
+import {
+  Title, Stack, TextInput, NumberInput, Select, Button, Image,
+  ActionIcon, Group, Text, Skeleton, Progress, Box
+} from "@mantine/core";
 import { useDisclosure } from '@mantine/hooks';
-import { LuPlus, LuMinus, LuSettings, LuRefreshCw } from "react-icons/lu";
+import { LuPlus, LuMinus, LuSettings, LuRefreshCw, LuTrash2 } from "react-icons/lu";
 import AspectRatioSelector from '../components/AspectRatio';
 import { SettingsModal } from '../components/SettingsModal';
 
@@ -25,6 +28,7 @@ export default function Home() {
   const [dimensions, setDimensions] = useState({ width: 1024, height: 1024 });
   const [generatedImages, setGeneratedImages] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [settingsOpened, settingsHandlers] = useDisclosure(false);
 
@@ -50,7 +54,12 @@ export default function Home() {
     }
 
     setIsLoading(true);
+    setProgress(0);
     setError(null);
+
+    const interval = setInterval(() => {
+      setProgress((p) => (p < 100 ? p + 1.67 : p));
+    }, 1000);
 
     try {
       const response = await fetch('/api/generate', {
@@ -78,7 +87,12 @@ export default function Home() {
       console.error('Error generating image:', error);
       setError('Failed to generate image. Please try again.');
     } finally {
-      setIsLoading(false);
+      clearInterval(interval);
+      setProgress(100);
+      setTimeout(() => {
+        setIsLoading(false);
+        setProgress(0);
+      }, 500); // Small delay to ensure progress bar fills
     }
   };
 
@@ -110,10 +124,10 @@ export default function Home() {
   };
 
   return (
-    <Stack gap="md">
+    <Stack>
       <Title order={1}>AndroFlux Playground</Title>
-      <SimpleGrid cols={{ base: 1, sm: 2 }}>
-        <Stack gap="md">
+      <Group align="flex-start">
+        <Stack style={{ flex: 1 }}>
           <Group align="flex-end">
             <NumberInput
               label="Seed"
@@ -121,7 +135,7 @@ export default function Home() {
               onChange={(value) => setSeed(Number(value))}
               min={0}
               max={999999}
-              style={{ flexGrow: 1 }}
+              style={{ flex: 1 }}
             />
             <ActionIcon onClick={randomizeSeed} size="lg">
               <LuRefreshCw />
@@ -140,14 +154,14 @@ export default function Home() {
                 data={[...PRESELECTED_LORAS, { value: 'custom', label: 'Custom URL' }]}
                 value={PRESELECTED_LORAS.some(l => l.value === lora.path) ? lora.path : 'custom'}
                 onChange={(value) => updateLora(index, 'path', value === 'custom' ? '' : value || '')}
-                style={{ flexGrow: 1 }}
+                style={{ flex: 1 }}
               />
-              {(!PRESELECTED_LORAS.some(l => l.value === lora.path)) && (
+              {!PRESELECTED_LORAS.some(l => l.value === lora.path) && (
                 <TextInput
                   label="Custom LoRA URL"
                   value={lora.path}
                   onChange={(event) => updateLora(index, 'path', event.currentTarget.value)}
-                  style={{ flexGrow: 1 }}
+                  style={{ flex: 1 }}
                 />
               )}
               <NumberInput
@@ -165,26 +179,46 @@ export default function Home() {
             </Group>
           ))}
           <Group>
-            <Button onClick={addLora}><LuPlus /> Add LoRA</Button>
-            <Button onClick={generateImage} loading={isLoading}>Generate Image</Button>
+          <Button onClick={addLora}><LuPlus /> Add LoRA</Button>
+            <Button onClick={generateImage} loading={isLoading}>
+              Generate Image
+            </Button>
           </Group>
-          {error && <Text c="red">{error}</Text>}
+          {error && <Text color="red">{error}</Text>}
         </Stack>
-        <Stack gap="md">
-          <Button onClick={clearImages}>Clear Images</Button>
-          {generatedImages.map((image, index) => (
-            <Image key={index} src={image} alt={`Generated image ${index + 1}`} />
-          ))}
+  
+        <Stack style={{ flex: 1 }}>
+          {isLoading ? (
+            <>
+              <Skeleton height={dimensions.height / 4} />
+              <Progress value={progress} color="blue" />
+            </>
+          ) : (
+            generatedImages.map((image, index) => (
+              <Image key={index} src={image} alt={`Generated image ${index + 1}`} radius="md" />
+            ))
+          )}
         </Stack>
-      </SimpleGrid>
+      </Group>
       <ActionIcon
-        onClick={settingsHandlers.open}
+        onClick={clearImages}
+        size="lg"
         style={{
           position: 'fixed',
-          bottom: '20px',
-          right: '20px',
+          bottom: 20,
+          left: 20,
         }}
+      >
+        <LuTrash2 />
+      </ActionIcon>
+      <ActionIcon
+        onClick={settingsHandlers.open}
         size="lg"
+        style={{
+          position: 'fixed',
+          bottom: 20,
+          right: 20,
+        }}
       >
         <LuSettings />
       </ActionIcon>
@@ -196,4 +230,4 @@ export default function Home() {
       />
     </Stack>
   );
-}
+}  
