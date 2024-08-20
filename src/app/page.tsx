@@ -3,10 +3,10 @@
 import { useState, useEffect } from 'react';
 import {
   Title, Stack, TextInput, NumberInput, Select, Button, Image,
-  ActionIcon, Group, Text, Skeleton, Progress, Box
+  ActionIcon, Group, Text, Skeleton, Progress, Box, SimpleGrid
 } from "@mantine/core";
 import { useDisclosure } from '@mantine/hooks';
-import { LuPlus, LuMinus, LuSettings, LuRefreshCw, LuTrash2 } from "react-icons/lu";
+import { LuPlus, LuMinus, LuSettings, LuRefreshCw, LuTrash2, LuDownload } from "react-icons/lu";
 import AspectRatioSelector from '../components/AspectRatio';
 import { SettingsModal } from '../components/SettingsModal';
 
@@ -124,10 +124,11 @@ export default function Home() {
   };
 
   return (
-    <Stack>
+    <Box>
       <Title order={1}>AndroFlux Playground</Title>
-      <Group align="flex-start">
-        <Stack style={{ flex: 1 }}>
+      <Group align="flex-start" grow>
+        {/* Left Section */}
+        <Stack style={{ width: '37.5%' }}>
           <Group align="flex-end">
             <NumberInput
               label="Seed"
@@ -135,7 +136,7 @@ export default function Home() {
               onChange={(value) => setSeed(Number(value))}
               min={0}
               max={999999}
-              style={{ flex: 1 }}
+              style={{ flexGrow: 1 }}
             />
             <ActionIcon onClick={randomizeSeed} size="lg">
               <LuRefreshCw />
@@ -145,6 +146,7 @@ export default function Home() {
             label="Prompt"
             value={prompt}
             onChange={(event) => setPrompt(event.currentTarget.value)}
+            style={{ flexGrow: 1 }}
           />
           <AspectRatioSelector dimensions={dimensions} setDimensions={setDimensions} />
           {loras.map((lora, index) => (
@@ -154,14 +156,14 @@ export default function Home() {
                 data={[...PRESELECTED_LORAS, { value: 'custom', label: 'Custom URL' }]}
                 value={PRESELECTED_LORAS.some(l => l.value === lora.path) ? lora.path : 'custom'}
                 onChange={(value) => updateLora(index, 'path', value === 'custom' ? '' : value || '')}
-                style={{ flex: 1 }}
+                style={{ flexGrow: 1 }}
               />
               {!PRESELECTED_LORAS.some(l => l.value === lora.path) && (
                 <TextInput
                   label="Custom LoRA URL"
                   value={lora.path}
                   onChange={(event) => updateLora(index, 'path', event.currentTarget.value)}
-                  style={{ flex: 1 }}
+                  style={{ flexGrow: 1 }}
                 />
               )}
               <NumberInput
@@ -179,25 +181,82 @@ export default function Home() {
             </Group>
           ))}
           <Group>
-          <Button onClick={addLora}><LuPlus /> Add LoRA</Button>
-            <Button onClick={generateImage} loading={isLoading}>
+            <Button onClick={addLora} style={{ flexGrow: 1 }}>
+              <LuPlus /> Add LoRA
+            </Button>
+            <Button onClick={generateImage} loading={isLoading} style={{ flexGrow: 1 }}>
               Generate Image
             </Button>
           </Group>
           {error && <Text color="red">{error}</Text>}
         </Stack>
   
-        <Stack style={{ flex: 1 }}>
-          {isLoading ? (
-            <>
-              <Skeleton height={dimensions.height / 4} />
-              <Progress value={progress} color="blue" />
-            </>
-          ) : (
-            generatedImages.map((image, index) => (
-              <Image key={index} src={image} alt={`Generated image ${index + 1}`} radius="md" />
-            ))
-          )}
+        {/* Right Section */}
+        <Stack style={{ flex: 1, overflowY: 'auto', height: '100vh' }}>
+          <Box
+            style={{
+              padding: '10px',
+              border: '1px solid #eaeaea',
+              borderRadius: '10px',
+              maxHeight: 'calc(100vh - 150px)',
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+              overflow: 'hidden',
+            }}
+          >
+            {isLoading ? (
+              <>
+                <Skeleton height={dimensions.height / 4} />
+                <Progress value={progress} color="blue" />
+              </>
+            ) : generatedImages.length === 0 ? (
+              <Box
+                style={{
+                  padding: '20px',
+                  border: '1px solid #eaeaea',
+                  borderRadius: '10px',
+                  width: '100%',
+                  textAlign: 'center',
+                  backgroundColor: '#f4f4f4',
+                }}
+              >
+                <Text color="dimmed">No image generated yet</Text>
+              </Box>
+            ) : (
+              <Image
+                src={generatedImages[0]}
+                alt="Generated image"
+                radius="md"
+                style={{ objectFit: 'contain', width: '100%', height: 'auto' }}
+              />
+            )}
+          </Box>
+  
+          <SimpleGrid cols={3}>
+            {generatedImages.slice(1).map((image, index) => (
+              <Box key={index} style={{ position: 'relative' }}>
+                <Image src={image} alt={`Generated image ${index + 1}`} radius="md" style={{ objectFit: 'contain', width: '100%' }} />
+                <ActionIcon
+                  variant="filled"
+                  color="blue"
+                  style={{
+                    position: 'absolute',
+                    top: 5,
+                    right: 5,
+                  }}
+                  onClick={() => {
+                    const a = document.createElement('a');
+                    a.href = image;
+                    a.download = `image-${index + 1}.png`;
+                    a.click();
+                  }}
+                >
+                  <LuDownload />
+                </ActionIcon>
+              </Box>
+            ))}
+          </SimpleGrid>
         </Stack>
       </Group>
       <ActionIcon
@@ -228,6 +287,9 @@ export default function Home() {
         apiKey={apiKey}
         setApiKey={setApiKey}
       />
-    </Stack>
+    </Box>
   );
-}  
+  
+  
+  
+}
