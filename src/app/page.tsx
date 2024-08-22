@@ -1,20 +1,18 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import {
   Title, Stack, TextInput, NumberInput, Select, Button, Image,
-  ActionIcon, Group, Text, Skeleton, Progress, Box, SimpleGrid,
-  Modal,
+  ActionIcon, Group, Text, Skeleton, Progress, Box, Modal
 } from "@mantine/core";
 import { useDisclosure } from '@mantine/hooks';
-import { LuPlus, LuMinus, LuSettings, LuRefreshCw, LuTrash2, LuDownload } from "react-icons/lu";
+import { LuPlus, LuMinus, LuSettings, LuRefreshCw, LuDownload } from "react-icons/lu";
 import AspectRatioSelector from '../components/AspectRatio';
 import { SettingsModal } from '../components/SettingsModal';
 import { EnhancedTextarea } from '../components/EnhancedTextarea';
-import JSZip from 'jszip';
 
 const PRESELECTED_LORAS = [
-  { value: 'https://civitai.com/api/download/models/736458?type=Model&format=SafeTensor', label: 'AndroFlux v19' },
+  { value: 'https://huggingface.co/markury/AndroFlux/resolve/main/AndroFlux-v19.safetensors', label: 'AndroFlux v19' },
   // Add more preselected LoRAs here
 ];
 
@@ -25,43 +23,14 @@ interface LoRA {
 
 export default function Home() {
   const [seed, setSeed] = useState(() => Math.floor(Math.random() * 1000000));
-  const [loras, setLoras] = useState<LoRA[]>([{ path: 'https://civitai.com/api/download/models/736458?type=Model&format=SafeTensor', scale: 1.0 }]);
+  const [loras, setLoras] = useState<LoRA[]>([{ path: 'https://huggingface.co/markury/AndroFlux/resolve/main/AndroFlux-v19.safetensors', scale: 1.0 }]);
   const [prompt, setPrompt] = useState('');
   const [dimensions, setDimensions] = useState({ width: 1024, height: 1024 });
   const [currentImage, setCurrentImage] = useState<string | null>(null);
-  const [galleryImages, setGalleryImages] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [settingsOpened, settingsHandlers] = useDisclosure(false);
-  const [clearStorageOpened, clearStorageHandlers] = useDisclosure(false);
-  const [storageUsage, setStorageUsage] = useState(0);
-
-  useEffect(() => {
-    loadImagesFromLocalStorage();
-    checkLocalStorageUsage();
-  }, []);
-
-  const loadImagesFromLocalStorage = () => {
-    const storedImages = localStorage.getItem('generatedImages');
-    if (storedImages) {
-      setGalleryImages(JSON.parse(storedImages));
-    }
-  };
-
-  const saveImagesToLocalStorage = (images: string[]) => {
-    localStorage.setItem('generatedImages', JSON.stringify(images));
-  };
-
-  const checkLocalStorageUsage = () => {
-    let total = 0;
-    for (let key in localStorage) {
-      if (localStorage.hasOwnProperty(key)) {
-        total += (localStorage[key].length * 2) / 1024 / 1024;
-      }
-    }
-    setStorageUsage(total);
-  };
 
   const generateImage = async () => {
     const falApiKey = localStorage.getItem('falApiKey');
@@ -73,11 +42,6 @@ export default function Home() {
     if (!prompt.trim()) {
       setError('Please enter a prompt before generating an image.');
       return;
-    }
-  
-    if (currentImage) {
-      setGalleryImages(prevImages => [currentImage, ...prevImages]);
-      saveImagesToLocalStorage([currentImage, ...galleryImages]);
     }
   
     setIsLoading(true);
@@ -112,9 +76,6 @@ export default function Home() {
       const imageUrl = URL.createObjectURL(blob);
   
       setCurrentImage(imageUrl);
-      setGalleryImages(prevImages => [imageUrl, ...prevImages]);
-      saveImagesToLocalStorage([imageUrl, ...galleryImages]);
-  
       setSeed(seed);
     } catch (error) {
       if (error instanceof Error) {
@@ -156,36 +117,15 @@ export default function Home() {
   const randomizeSeed = () => {
     setSeed(Math.floor(Math.random() * 1000000));
   };
-
-  const clearImages = () => {
-    setCurrentImage(null);
-    setGalleryImages([]);
-    localStorage.removeItem('generatedImages');
-    checkLocalStorageUsage();
-  };
-
-  const downloadAllImages = () => {
-    const allImages = currentImage ? [currentImage, ...galleryImages] : galleryImages;
-    const zip = new JSZip();
-    allImages.forEach((image, index) => {
-      zip.file(`image-${index + 1}.png`, fetch(image).then(response => response.blob()));
-    });
-    zip.generateAsync({ type: 'blob' }).then((content: Blob) => {
-      const link = document.createElement('a');
-      link.href = URL.createObjectURL(content);
-      link.download = 'generated-images.zip';
-      link.click();
-    });
-  };
-
-  const downloadImage = async (imageUrl: string, index: number) => {
+  
+  const downloadImage = async (imageUrl: string) => {
     try {
       const response = await fetch(imageUrl);
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `image-${index + 1}.png`;
+      link.download = 'AndroFlux.png';
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -271,7 +211,7 @@ export default function Home() {
               padding: '10px',
               border: '1px solid #eaeaea',
               borderRadius: '10px',
-              display: 'flex',
+              display: 'flex', 
               flexDirection: 'column',
               justifyContent: 'center',
               alignItems: 'center',
@@ -294,7 +234,7 @@ export default function Home() {
                 }}
               >
                 <Text color="dimmed">Nothing here (yet)</Text>
-              </Box>
+              </Box>  
             ) : (
               <Box style={{ position: 'relative', width: '100%' }}>
                 <Image
@@ -311,46 +251,12 @@ export default function Home() {
                     top: 10,
                     right: 10,
                   }}
-                  onClick={() => downloadImage(currentImage, 0)}
+                  onClick={() => downloadImage(currentImage)}  
                 >
                   <LuDownload />
                 </ActionIcon>
               </Box>
             )}
-          </Box>
-
-          {/* Gallery */}
-          <Box
-            style={{
-              padding: '10px',
-              border: '1px solid #eaeaea',
-              borderRadius: '10px',
-              overflow: 'auto',
-              maxHeight: 'calc(100vh - 400px)',
-            }}
-          >
-            <SimpleGrid cols={3}>
-              {galleryImages.map((image, index) => (
-                <Box key={index} style={{ position: 'relative' }}>
-                  <Image src={image} alt={`Generated image ${index + 1}`} radius="md" style={{ objectFit: 'contain', width: '100%' }} />
-                  <ActionIcon
-                    variant="filled"
-                    color="blue"
-                    style={{
-                      position: 'absolute',
-                      top: 5,
-                      right: 5,
-                    }}
-                    onClick={() => downloadImage(image, index + 1)}
-                  >
-                    <LuDownload />
-                  </ActionIcon>
-                </Box>
-              ))}
-            </SimpleGrid>
-            <Button onClick={clearStorageHandlers.open} color="red" fullWidth mt="md">
-              Clear All Images
-            </Button>
           </Box>
         </Stack>
       </Group>
@@ -369,22 +275,6 @@ export default function Home() {
         opened={settingsOpened}
         onClose={settingsHandlers.close}
       />
-      <Modal
-        opened={clearStorageOpened}
-        onClose={clearStorageHandlers.close}
-        title="Clear Local Storage"
-      >
-        <Text>Current local storage usage: {storageUsage.toFixed(2)} MB</Text>
-        <Text>Are you sure you want to clear all generated images from local storage?</Text>
-        <Group mt="md">
-          <Button onClick={() => {
-            clearImages();
-            clearStorageHandlers.close();
-          }}>Clear Storage</Button>
-          <Button onClick={downloadAllImages}>Download All Images</Button>
-          <Button onClick={clearStorageHandlers.close} variant="outline">Cancel</Button>
-        </Group>
-      </Modal>
     </Box>
   );
 }
